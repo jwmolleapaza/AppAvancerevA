@@ -1157,6 +1157,7 @@ async function submitReportToAirtable() {
         }
         
         showToast('Reporte guardado correctamente.', 'success');
+        alert('Reporte guardado correctamente.');
         
         // Resetear Formulario
         initializeReportForm();

@@ -448,6 +448,19 @@ function initializeReportForm() {
     renderActivitiesGrid();
     renderPhotosGallery();
     updateGeneralReportTotals();
+    
+    // 6. Limpiar campos de metrado y horas hombre residuales
+    const metradoInput = document.getElementById('input-metrado-ejecutado');
+    if (metradoInput) metradoInput.value = '';
+    
+    const currActWorkers = document.getElementById('curr-act-workers-count');
+    if (currActWorkers) currActWorkers.innerText = '0';
+    
+    const currActHH = document.getElementById('curr-act-hh-total');
+    if (currActHH) currActHH.innerText = '0.0 hrs';
+    
+    const hhInputs = document.getElementById('personnel-hh-inputs');
+    if (hhInputs) hhInputs.innerHTML = '<div class="no-data-indicator">Marque trabajadores arriba para ingresar sus horas.</div>';
 }
 
 // --- CASCADA DE FILTROS DEPENDIENTES ---
@@ -1100,6 +1113,7 @@ async function submitReportToAirtable() {
         const activitiesFieldsArray = activeReportActivities.map(act => ({
             'ID': act.id,
             'Reporte': reportId,
+            'Fecha': dateIsoStr,
             'Proyecto': act.proyecto,
             'Frente': act.frente,
             'Disciplina': act.disciplina,
@@ -1119,6 +1133,7 @@ async function submitReportToAirtable() {
                 personalFieldsArray.push({
                     'ID': `${act.id}-${p.dni}`,
                     'Reporte': reportId,
+                    'Fecha': dateIsoStr,
                     'Activity ID': act.activityId,
                     'Personal': p.nombre,
                     'Categoría': p.categoria,

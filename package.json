@@ -1,0 +1,13 @@
+{
+  "name": "reporte-diario-airtable",
+  "version": "1.0.0",
+  "description": "Aplicación Web y Móvil para Reporte Diario de Producción, Metrados y Horas Hombre (HH) con Airtable",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx -y http-server -p 8080 -c-1"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}

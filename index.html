@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CONSTRUTECH - Reporte Diario de Campo</title>
+    
+    <!-- Google Fonts: Inter (UI) y Outfit (Títulos) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Chart.js para el Dashboard -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- SheetJS (XLSX) para la Exportación de Excel -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    
+    <!-- jsPDF para Exportación de PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <!-- Estilos de la Aplicación -->
+    <link rel="stylesheet" href="index.css">
+</head>
+<body class="dark-theme">
+
+    <!-- PANTALLA DE AUTENTICACIÓN (LOGIN) -->
+    <div id="login-screen" class="login-wrapper">
+        <div class="login-glass-card">
+            <div class="login-logo-container">
+                <span class="login-logo-icon">👷</span>
+                <h2>CONSTRUTECH</h2>
+                <p>Plataforma de Control Diario</p>
+            </div>
+            
+            <form id="login-form" class="login-form-fields">
+                <div class="input-field-group">
+                    <label for="login-username">Usuario</label>
+                    <div class="input-with-icon">
+                        <span class="field-icon">👤</span>
+                        <input type="text" id="login-username" placeholder="Ingrese su usuario..." required autocomplete="username">
+                    </div>
+                </div>
+                
+                <div class="input-field-group">
+                    <label for="login-password">Contraseña</label>
+                    <div class="input-with-icon">
+                        <span class="field-icon">🔒</span>
+                        <input type="password" id="login-password" placeholder="Ingrese su contraseña..." required autocomplete="current-password">
+                    </div>
+                </div>
+                
+                <!-- Configuración opcional de Airtable -->
+                <div class="airtable-config-collapsible">
+                    <button type="button" id="btn-toggle-setup" class="setup-toggle-link">
+                        ⚙️ Configurar Base de Datos (Opcional)
+                    </button>
+                    <div id="setup-fields-container" class="setup-fields hidden">
+                        <div class="input-field-group margin-top-sm">
+                            <label for="setup-airtable-pat">Airtable Token (PAT)</label>
+                            <input type="password" id="setup-airtable-pat" placeholder="patu3MmQexUtnzNht...">
+                        </div>
+                        <div class="input-field-group margin-top-sm">
+                            <label for="setup-base-id">Airtable Base ID</label>
+                            <input type="text" id="setup-base-id" placeholder="appPMC2exCaN7iytJ">
+                        </div>
+                    </div>
+                </div>
+                
+                <button type="submit" id="btn-login-submit" class="btn btn-primary btn-block">
+                    Iniciar Sesión
+                </button>
+            </form>
+            <div id="login-error-msg" class="login-error hidden">
+                Usuario o contraseña incorrectos.
+            </div>
+        </div>
+    </div>
+
+    <!-- CONTENEDOR PRINCIPAL DE LA APLICACIÓN -->
+    <div id="app-container" class="app-layout hidden">
+        
+        <!-- CABECERA (HEADER) -->
+        <header class="app-header">
+            <div class="header-logo-section">
+                <span class="header-logo-emoji">👷</span>
+                <div>
+                    <h1>CONSTRUTECH</h1>
+                    <span>CONTROL DE CAMPO Y PRODUCTIVIDAD</span>
+                </div>
+            </div>
+            
+            <div class="header-right-controls">
+                <div id="connection-status" class="connection-led online">
+                    <span class="led-glow"></span>
+                    <span class="led-text">CONECTADO</span>
+                </div>
+                
+                <div class="header-user-profile">
+                    <div class="user-meta-details">
+                        <span class="profile-name" id="user-display-name">Cargando...</span>
+                        <span class="profile-role" id="user-display-role">Supervisor</span>
+                    </div>
+                    <button id="btn-logout" class="btn-header-logout" title="Cerrar Sesión">
+                        🚪
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- NAVEGACIÓN Y TABS -->
+        <nav class="app-navigation-tabs">
+            <button id="tab-new-report" class="tab-nav-btn active">
+                <span class="tab-btn-emoji">📝</span> NUEVO REPORTE
+            </button>
+            <button id="tab-history-reports" class="tab-nav-btn">
+                <span class="tab-btn-emoji">📋</span> CONSULTA HISTÓRICA
+            </button>
+            <button id="tab-dashboard-view" class="tab-nav-btn">
+                <span class="tab-btn-emoji">📊</span> DASHBOARD GENERAL
+            </button>
+        </nav>
+
+        <!-- CONTENEDOR DE CONTENIDOS -->
+        <main class="app-main-viewport">
+            
+            <!-- SECCIÓN 1: NUEVO REPORTE DIARIO -->
+            <section id="section-new-report" class="tab-content-panel active">
+                <div class="form-container-grid">
+                    
+                    <!-- COLUMNA IZQUIERDA: CONFIGURACIÓN Y ACTIVIDADES -->
+                    <div class="form-grid-left">
+                        
+                        <!-- TARJETA 1: Cabecera de Reporte -->
+                        <div class="glass-form-card">
+                            <div class="card-header-bar">
+                                <span class="card-header-emoji">📆</span>
+                                <h3>Cabecera y Turno</h3>
+                            </div>
+                            <div class="card-fields-row">
+                                <div class="input-field-group">
+                                    <label>Fecha del Sistema</label>
+                                    <input type="text" id="report-system-date" readonly class="input-readonly">
+                                </div>
+                                <div class="input-field-group">
+                                    <label>Hora del Sistema</label>
+                                    <input type="text" id="report-system-time" readonly class="input-readonly">
+                                </div>
+                            </div>
+                            <div class="card-fields-row">
+                                <div class="input-field-group">
+                                    <label for="report-select-turno">Turno *</label>
+                                    <select id="report-select-turno" required>
+                                        <option value="" disabled selected>Cargando turnos...</option>
+                                    </select>
+                                </div>
+                                <div class="input-field-group">
+                                    <label for="report-select-supervisor">Supervisor *</label>
+                                    <select id="report-select-supervisor" required>
+                                        <option value="" disabled selected>Cargando supervisores...</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TARJETA 2: Planificación y Producción (Cascada) -->
+                        <div class="glass-form-card">
+                            <div class="card-header-bar">
+                                <span class="card-header-emoji">⚙️</span>
+                                <h3>Planificación y Producción</h3>
+                            </div>
+                            <div class="cascading-selects-wrapper">
+                                <div class="input-field-group">
+                                    <label for="select-proyecto">Proyecto *</label>
+                                    <select id="select-proyecto">
+                                        <option value="" disabled selected>Seleccione Proyecto...</option>
+                                    </select>
+                                </div>
+                                <div class="input-field-group">
+                                    <label for="select-frente">Frente *</label>
+                                    <select id="select-frente" disabled>
+                                        <option value="" disabled selected>Seleccione Frente...</option>
+                                    </select>
+                                </div>
+                                <div class="input-field-group">
+                                    <label for="select-disciplina">Disciplina *</label>
+                                    <select id="select-disciplina" disabled>
+                                        <option value="" disabled selected>Seleccione Disciplina...</option>
+                                    </select>
+                                </div>
+                                <div class="input-field-group">
+                                    <label for="select-area">Área *</label>
+                                    <select id="select-area" disabled>
+                                        <option value="" disabled selected>Seleccione Área...</option>
+                                    </select>
+                                </div>
+                                <div class="input-field-group">
+                                    <label for="select-activity-id">Activity ID *</label>
+                                    <select id="select-activity-id" disabled>
+                                        <option value="" disabled selected>Seleccione Activity ID...</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="card-fields-row margin-top-md">
+                                <div class="input-field-group flex-grow-3">
+                                    <label>Actividad</label>
+                                    <input type="text" id="display-actividad-nombre" placeholder="Autocompletado..." readonly class="input-readonly">
+                                </div>
+                                <div class="input-field-group flex-grow-1">
+                                    <label>Unidad</label>
+                                    <input type="text" id="display-actividad-unidad" placeholder="Und" readonly class="input-readonly center-text">
+                                </div>
+                            </div>
+
+                            <div class="production-input-box margin-top-md">
+                                <div class="input-field-group">
+                                    <label for="input-metrado-ejecutado">Metrado Ejecutado *</label>
+                                    <div class="input-unit-container">
+                                        <input type="number" id="input-metrado-ejecutado" step="any" placeholder="0.00">
+                                        <span class="unit-badge" id="display-metrado-unidad">-</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TARJETA 3: Personal de Campo y Horas Hombre -->
+                        <div class="glass-form-card">
+                            <div class="card-header-bar">
+                                <span class="card-header-emoji">👷</span>
+                                <h3>Asignación de Personal y Horas Hombre (HH)</h3>
+                            </div>
+                            
+                            <!-- Filtros rápidos por área de personal -->
+                            <div class="area-filter-row">
+                                <label class="area-filter-title">Filtrar Personal por Área:</label>
+                                <div class="area-buttons-grid" id="personnel-area-buttons">
+                                    <!-- Botones cargados dinámicamente -->
+                                </div>
+                            </div>
+
+                            <!-- Listado de trabajadores -->
+                            <div class="personnel-checklist-box">
+                                <label class="field-section-label">Listado de Personal Disponible</label>
+                                <div class="personnel-scroll-grid" id="personnel-checkbox-list">
+                                    <div class="no-data-indicator">Cargando personal...</div>
+                                </div>
+                            </div>
+
+                            <!-- Asignación rápida de HH para los seleccionados -->
+                            <div class="hh-allocation-box margin-top-md">
+                                <label class="field-section-label">Asignación de HH para esta Actividad</label>
+                                <div class="hh-allocation-scroll-list" id="personnel-hh-inputs">
+                                    <div class="no-data-indicator">Marque trabajadores arriba para ingresar sus horas.</div>
+                                </div>
+                                <div class="hh-current-summary" id="current-activity-hh-summary">
+                                    <span>Trabajadores: <strong id="curr-act-workers-count">0</strong></span>
+                                    <span>Total HH Actividad: <strong id="curr-act-hh-total">0.0 hrs</strong></span>
+                                </div>
+                            </div>
+
+                            <div class="add-activity-action-box margin-top-lg">
+                                <button type="button" id="btn-add-activity-grid" class="btn btn-secondary btn-block btn-large">
+                                    ➕ Agregar Actividad al Reporte
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- COLUMNA DERECHA: GRILLA DE MULTIACTIVIDAD, FOTOS Y GUARDAR -->
+                    <div class="form-grid-right">
+                        
+                        <!-- TARJETA 4: Grilla de Multiactividades Agregadas -->
+                        <div class="glass-form-card">
+                            <div class="card-header-bar">
+                                <span class="card-header-emoji">📋</span>
+                                <h3>Actividades en este Reporte</h3>
+                            </div>
+                            <div class="table-container">
+                                <table class="app-table" id="table-activities-grid">
+                                    <thead>
+                                        <tr>
+                                            <th>Actividad / ID</th>
+                                            <th>Frente / Área</th>
+                                            <th>Metrado</th>
+                                            <th>Personal</th>
+                                            <th>HH</th>
+                                            <th class="center-text">Eliminar</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="activities-grid-body">
+                                        <tr>
+                                            <td colspan="6" class="center-text text-muted padding-lg">
+                                                Aún no se han agregado actividades a este reporte diario.
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <!-- Resumen General del Reporte -->
+                            <div class="report-general-totals-bar margin-top-md">
+                                <div class="total-metric-item">
+                                    <span class="total-metric-label">Actividades</span>
+                                    <span class="total-metric-val" id="report-summary-activities-count">0</span>
+                                </div>
+                                <div class="total-metric-item">
+                                    <span class="total-metric-label">Trabajadores (Únicos)</span>
+                                    <span class="total-metric-val" id="report-summary-workers-count">0</span>
+                                </div>
+                                <div class="total-metric-item">
+                                    <span class="total-metric-label">Horas Hombre Totales</span>
+                                    <span class="total-metric-val" id="report-summary-hh-total">0.0</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TARJETA 5: Evidencias Fotográficas -->
+                        <div class="glass-form-card">
+                            <div class="card-header-bar">
+                                <span class="card-header-emoji">📸</span>
+                                <h3>Evidencias Fotográficas</h3>
+                            </div>
+                            
+                            <div class="photo-upload-selector-row">
+                                <div class="input-field-group flex-grow-2">
+                                    <label for="select-photo-activity">Asociar a Actividad *</label>
+                                    <select id="select-photo-activity">
+                                        <option value="" disabled selected>Agregue actividades primero...</option>
+                                    </select>
+                                </div>
+                                <div class="input-field-group flex-grow-1">
+                                    <label>Cargar Foto</label>
+                                    <label class="btn btn-outline file-upload-btn">
+                                        📷 Abrir Cámara / Galería
+                                        <input type="file" id="input-camera-gallery" accept="image/*" multiple style="display: none;">
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Galería de fotos agregadas -->
+                            <div class="photo-gallery-preview" id="photos-preview-gallery">
+                                <div class="no-photos-indicator">No hay fotografías adjuntas en este reporte.</div>
+                            </div>
+                        </div>
+
+                        <!-- ACCIÓN FINAL: GUARDAR REPORTE -->
+                        <div class="save-report-action-panel">
+                            <button type="button" id="btn-submit-report-airtable" class="btn btn-success btn-large btn-block">
+                                💾 GUARDAR REPORTE DIARIO DE PRODUCCIÓN
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- SECCIÓN 2: CONSULTA HISTÓRICA DE REPORTES -->
+            <section id="section-history" class="tab-content-panel">
+                <div class="glass-form-card">
+                    <div class="card-header-bar">
+                        <span class="card-header-emoji">🔍</span>
+                        <h3>Filtros de Búsqueda</h3>
+                    </div>
+                    <div class="history-filters-grid">
+                        <div class="input-field-group">
+                            <label for="filter-history-date">Fecha de Reporte</label>
+                            <input type="date" id="filter-history-date">
+                        </div>
+                        <div class="input-field-group">
+                            <label for="filter-history-proyecto">Proyecto</label>
+                            <select id="filter-history-proyecto">
+                                <option value="">Todos los Proyectos</option>
+                            </select>
+                        </div>
+                        <div class="input-field-group">
+                            <label for="filter-history-frente">Frente</label>
+                            <select id="filter-history-frente">
+                                <option value="">Todos los Frentes</option>
+                            </select>
+                        </div>
+                        <div class="input-field-group">
+                            <label for="filter-history-disciplina">Disciplina</label>
+                            <select id="filter-history-disciplina">
+                                <option value="">Todas las Disciplinas</option>
+                            </select>
+                        </div>
+                        <div class="input-field-group">
+                            <label for="filter-history-area">Área de Trabajo</label>
+                            <select id="filter-history-area">
+                                <option value="">Todas las Áreas</option>
+                            </select>
+                        </div>
+                        <div class="input-field-group">
+                            <label for="filter-history-supervisor">Supervisor</label>
+                            <select id="filter-history-supervisor">
+                                <option value="">Todos los Supervisores</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="filter-actions-row margin-top-md">
+                        <button type="button" id="btn-apply-history-filters" class="btn btn-primary">
+                            🔍 Aplicar Filtros
+                        </button>
+                        <button type="button" id="btn-clear-history-filters" class="btn btn-outline">
+                            Limpiar Filtros
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tabla de Historial -->
+                <div class="glass-form-card margin-top-lg">
+                    <div class="card-header-bar flex-space-between">
+                        <div class="flex-align-center">
+                            <span class="card-header-emoji">📋</span>
+                            <h3>Historial de Reportes en Airtable</h3>
+                        </div>
+                        <div class="export-buttons-group">
+                            <button type="button" id="btn-export-history-excel" class="btn btn-secondary btn-small">
+                                📤 Exportar a Excel
+                            </button>
+                            <button type="button" id="btn-export-history-pdf" class="btn btn-outline btn-small">
+                                🖨️ Imprimir / PDF
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="table-container">
+                        <table class="app-table" id="table-history-list">
+                            <thead>
+                                <tr>
+                                    <th>ID Reporte</th>
+                                    <th>Fecha</th>
+                                    <th>Turno</th>
+                                    <th>Supervisor</th>
+                                    <th>Usuario</th>
+                                    <th class="center-text">Actividades</th>
+                                    <th class="center-text">Personal</th>
+                                    <th class="center-text">Total HH</th>
+                                    <th class="center-text">Evidencias</th>
+                                    <th class="center-text">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="history-list-body">
+                                <tr>
+                                    <td colspan="10" class="center-text text-muted padding-lg">
+                                        Cargando listado histórico desde Airtable...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- SECCIÓN 3: DASHBOARD GENERAL -->
+            <section id="section-dashboard" class="tab-content-panel">
+                
+                <!-- KPI CARDS GRID -->
+                <div class="kpi-cards-grid">
+                    <div class="kpi-card-box">
+                        <div class="kpi-card-header">
+                            <span class="kpi-card-emoji">📈</span>
+                            <span>Metrado Diario</span>
+                        </div>
+                        <div class="kpi-card-value" id="kpi-metrado-diario">0.00</div>
+                        <div class="kpi-card-footer">Ejecutado hoy</div>
+                    </div>
+                    
+                    <div class="kpi-card-box">
+                        <div class="kpi-card-header">
+                            <span class="kpi-card-emoji">📊</span>
+                            <span>Metrado Acumulado</span>
+                        </div>
+                        <div class="kpi-card-value" id="kpi-metrado-acumulado">0.00</div>
+                        <div class="kpi-card-footer">Total histórico consolidado</div>
+                    </div>
+                    
+                    <div class="kpi-card-box">
+                        <div class="kpi-card-header">
+                            <span class="kpi-card-emoji">⏱️</span>
+                            <span>HH Diarias</span>
+                        </div>
+                        <div class="kpi-card-value" id="kpi-hh-diarias">0.0</div>
+                        <div class="kpi-card-footer">Horas Hombre reportadas hoy</div>
+                    </div>
+                    
+                    <div class="kpi-card-box">
+                        <div class="kpi-card-header">
+                            <span class="kpi-card-emoji">⏳</span>
+                            <span>HH Acumuladas</span>
+                        </div>
+                        <div class="kpi-card-value" id="kpi-hh-acumuladas">0.0</div>
+                        <div class="kpi-card-footer">Total horas hombre del proyecto</div>
+                    </div>
+                    
+                    <div class="kpi-card-box">
+                        <div class="kpi-card-header">
+                            <span class="kpi-card-emoji">⚡</span>
+                            <span>Productividad HH/Unidad</span>
+                        </div>
+                        <div class="kpi-card-value" id="kpi-productividad">0.00</div>
+                        <div class="kpi-card-footer">Promedio de HH consumidas por unidad</div>
+                    </div>
+                    
+                    <div class="kpi-card-box">
+                        <div class="kpi-card-header">
+                            <span class="kpi-card-emoji">✅</span>
+                            <span>Actividades Ejecutadas</span>
+                        </div>
+                        <div class="kpi-card-value" id="kpi-actividades-count">0</div>
+                        <div class="kpi-card-footer">Códigos únicos reportados</div>
+                    </div>
+                </div>
+
+                <!-- CHARTS GRID -->
+                <div class="dashboard-charts-layout margin-top-lg">
+                    <div class="chart-glass-box">
+                        <h3>Distribución de Actividades por Disciplina (HH)</h3>
+                        <div class="chart-canvas-container">
+                            <canvas id="chart-activities-discipline"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-glass-box">
+                        <h3>Tendencia Semanal (HH Acumuladas)</h3>
+                        <div class="chart-canvas-container">
+                            <canvas id="chart-weekly-trend"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-glass-box">
+                        <h3>Consumo de HH por Área de Personal</h3>
+                        <div class="chart-canvas-container">
+                            <canvas id="chart-hh-personnel-area"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+        
+        <!-- ELEMENTO PARA EL LOGO DE CARGA -->
+        <div id="global-spinner" class="spinner-overlay hidden">
+            <div class="spinner-box">
+                <div class="spinner-icon">🔄</div>
+                <div class="spinner-text" id="spinner-status-text">Cargando base de datos...</div>
+            </div>
+        </div>
+
+        <!-- NOTIFICACIONES TOAST -->
+        <div id="toast-container" class="toast-wrapper"></div>
+    </div>
+
+    <!-- MODAL DETALLE DE REPORTE -->
+    <div id="report-detail-modal" class="modal-overlay hidden">
+        <div class="modal-glass-container">
+            <div class="modal-header-row">
+                <h2 id="modal-report-id">Detalle de Reporte</h2>
+                <button id="btn-close-modal" class="modal-close-btn">&times;</button>
+            </div>
+            
+            <div class="modal-scrollable-content">
+                <!-- Información Cabecera -->
+                <div class="modal-data-section">
+                    <h3>Cabecera del Reporte</h3>
+                    <div class="modal-fields-grid">
+                        <div><strong>Fecha:</strong> <span id="modal-date"></span></div>
+                        <div><strong>Turno:</strong> <span id="modal-turno"></span></div>
+                        <div><strong>Supervisor:</strong> <span id="modal-supervisor"></span></div>
+                        <div><strong>Registrado por:</strong> <span id="modal-usuario"></span></div>
+                        <div><strong>Fecha/Hora Registro:</strong> <span id="modal-timestamp"></span></div>
+                    </div>
+                </div>
+                
+                <!-- Tabla Actividades -->
+                <div class="modal-data-section margin-top-md">
+                    <h3>Actividades Reportadas</h3>
+                    <div class="table-container">
+                        <table class="app-table" id="modal-table-activities">
+                            <thead>
+                                <tr>
+                                    <th>Activity ID</th>
+                                    <th>Actividad</th>
+                                    <th>Unidad</th>
+                                    <th>Proyecto</th>
+                                    <th>Frente / Área</th>
+                                    <th>Metrado</th>
+                                </tr>
+                            </thead>
+                            <tbody id="modal-activities-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Tabla Personal -->
+                <div class="modal-data-section margin-top-md">
+                    <h3>Personal y HH Asignadas</h3>
+                    <div class="table-container">
+                        <table class="app-table" id="modal-table-personal">
+                            <thead>
+                                <tr>
+                                    <th>Personal</th>
+                                    <th>Categoría</th>
+                                    <th>Activity ID</th>
+                                    <th>HH Asignadas</th>
+                                </tr>
+                            </thead>
+                            <tbody id="modal-personal-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Galería de Evidencias -->
+                <div class="modal-data-section margin-top-md">
+                    <h3>Evidencias Fotográficas</h3>
+                    <div class="modal-photos-grid" id="modal-photos-gallery"></div>
+                </div>
+            </div>
+            
+            <div class="modal-footer-row">
+                <button type="button" id="btn-modal-print" class="btn btn-outline">🖨️ Imprimir este Reporte</button>
+                <button type="button" id="btn-modal-close-footer" class="btn btn-secondary">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts de la aplicación -->
+    <script src="app.js"></script>
+    <script src="dashboard.js"></script>
+</body>
+</html>
